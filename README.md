@@ -67,9 +67,17 @@ This project was tested on Python 3.14.2.
 
 ### AlienVault OTX
 
-1. Register for a free AlienVault OTX account: [https://otx.alienvault.com/users/sign_up](https://otx.alienvault.com/users/sign_up).
-2. Once registered and logged in, navigate to your profile by clicking on your username in the top-right corner and selecting `My Profile`.
-3. On the profile page, click on the `API Key` tab to view your API key. Click on the `Copy to Clipboard` button to copy your API key.
+1. Register for a free AlienVault OTX account: [https://otx.alienvault.com/#signup](https://otx.alienvault.com/#signup).
+
+![AlienVault Sign Up Page](readme_media/ao_signup.png)
+
+2. Once registered and logged in, navigate to your profile by clicking on your username in the top-right corner and selecting `Settings`.
+
+![AlienVault Profile](readme_media/ao_profile.png)
+
+3. Scroll down to the `API Key` tab to view your API key.
+
+![AlienVault OTX API Key](readme_media/ao_api_key.png)
 
 ### .env File Setup
 
