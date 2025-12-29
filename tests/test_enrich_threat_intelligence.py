@@ -7,7 +7,7 @@ from the example_data/ directory.
 import pytest
 import json
 import os
-from helper_functions.enrichment import (
+from helper_functions.enrich_threat_intelligence import (
     enrich_abuseipdb,
     enrich_ipinfo,
     enrich_ip_virustotal,
@@ -15,6 +15,7 @@ from helper_functions.enrichment import (
     enrich_file_hash_virustotal,
     enrich_ip_alienvault,
     enrich_domain_alienvault,
+    enrich_urlscan,
     combined_enrichment,
 )
 
@@ -79,6 +80,13 @@ def domain_alienvault_normalized_data():
     with open(
         os.path.join(EXAMPLE_DATA_DIR, "normalized_domain_alienvault.json"), "r"
     ) as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def urlscan_normalized_data():
+    """Load normalized URLScan.io data from example file."""
+    with open(os.path.join(EXAMPLE_DATA_DIR, "normalized_urlscan.json"), "r") as f:
         return json.load(f)
 
 
@@ -471,6 +479,100 @@ class TestEnrichDomainAlienVault:
         assert len(result) > 0
 
 
+class TestEnrichURLScan:
+    """Test suite for URLScan.io enrichment."""
+
+    def test_enrich_urlscan_returns_string(self, urlscan_normalized_data):
+        """Test that enrich_urlscan returns a string."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        assert isinstance(result, str)
+
+    def test_enrich_urlscan_contains_analyzed_time(self, urlscan_normalized_data):
+        """Test that enrichment contains analyzed time."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        assert "Analyzed at:" in result
+
+    def test_enrich_urlscan_contains_report_link(self, urlscan_normalized_data):
+        """Test that enrichment contains URLScan report link."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        assert "URLScan Report:" in result
+        assert "urlscan.io" in result
+
+    def test_enrich_urlscan_contains_defanged_url(self, urlscan_normalized_data):
+        """Test that enrichment contains defanged URL."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        assert "Defanged URL:" in result
+        assert "hxxp" in result or "[.]" in result
+
+    def test_enrich_urlscan_contains_status(self, urlscan_normalized_data):
+        """Test that enrichment contains status (Malicious or Clean)."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        assert "Status:" in result
+        assert "MALICIOUS" in result or "Clean" in result
+
+    def test_enrich_urlscan_contains_confidence_score(self, urlscan_normalized_data):
+        """Test that enrichment contains confidence score."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        assert "Confidence Score:" in result
+
+    def test_enrich_urlscan_contains_page_info(self, urlscan_normalized_data):
+        """Test that enrichment contains page information."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        additional_info = urlscan_normalized_data.get("additional_info", {})
+        if additional_info.get("page_title"):
+            assert "Page Title:" in result
+        if additional_info.get("page_status"):
+            assert "HTTP Status:" in result
+
+    def test_enrich_urlscan_contains_domain_info(self, urlscan_normalized_data):
+        """Test that enrichment contains domain information."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        domain_info = urlscan_normalized_data.get("domain_info", {})
+        if domain_info.get("apex_domain"):
+            assert "Apex Domain:" in result
+        if domain_info.get("domain_age_days") is not None:
+            assert "Domain Age:" in result
+
+    def test_enrich_urlscan_contains_location(self, urlscan_normalized_data):
+        """Test that enrichment contains location information."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        geo_info = urlscan_normalized_data.get("geo_info", {})
+        if geo_info.get("city") or geo_info.get("country"):
+            assert "Location:" in result
+
+    def test_enrich_urlscan_contains_network_info(self, urlscan_normalized_data):
+        """Test that enrichment contains network information."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        network_info = urlscan_normalized_data.get("network_info", {})
+        if network_info.get("asn"):
+            assert "ASN:" in result
+        if network_info.get("organization"):
+            assert "Organization:" in result
+
+    def test_enrich_urlscan_contains_associated_resources(
+        self, urlscan_normalized_data
+    ):
+        """Test that enrichment contains associated resources."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        additional_info = urlscan_normalized_data.get("additional_info", {})
+        if additional_info.get("associated_ips"):
+            assert "Associated IPs" in result
+        if additional_info.get("associated_domains"):
+            assert "Associated Domains" in result
+
+    def test_enrich_urlscan_contains_screenshot(self, urlscan_normalized_data):
+        """Test that enrichment contains screenshot URL."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        additional_info = urlscan_normalized_data.get("additional_info", {})
+        if additional_info.get("screenshot_url"):
+            assert "Screenshot:" in result
+
+    def test_enrich_urlscan_not_empty(self, urlscan_normalized_data):
+        """Test that enrichment result is not empty."""
+        result = enrich_urlscan(urlscan_normalized_data)
+        assert len(result) > 0
+
+
 class TestCombinedEnrichment:
     """Test suite for combined enrichment functionality."""
 
@@ -543,6 +645,7 @@ class TestCombinedEnrichment:
         file_hash_virustotal_normalized_data,
         ip_alienvault_normalized_data,
         domain_alienvault_normalized_data,
+        urlscan_normalized_data,
     ):
         """Test that combined enrichment includes all sections when all data provided."""
         result = combined_enrichment(
@@ -553,6 +656,7 @@ class TestCombinedEnrichment:
             file_hash_virustotal_data=file_hash_virustotal_normalized_data,
             ip_alienvault_data=ip_alienvault_normalized_data,
             domain_alienvault_data=domain_alienvault_normalized_data,
+            urlscan_data=urlscan_normalized_data,
         )
         assert "ABUSEIPDB ANALYSIS" in result
         assert "IPINFO.IO ANALYSIS" in result
@@ -561,6 +665,7 @@ class TestCombinedEnrichment:
         assert "VIRUSTOTAL FILE HASH ANALYSIS" in result
         assert "ALIENVAULT OTX IP ANALYSIS" in result
         assert "ALIENVAULT OTX DOMAIN ANALYSIS" in result
+        assert "URLSCAN.IO ANALYSIS" in result
 
     def test_combined_enrichment_no_data(self):
         """Test that combined enrichment handles no data gracefully."""
@@ -579,6 +684,13 @@ class TestCombinedEnrichment:
         assert "ABUSEIPDB ANALYSIS" in result
         assert "VIRUSTOTAL DOMAIN ANALYSIS" in result
         assert "IPINFO.IO ANALYSIS" not in result
+
+    def test_combined_enrichment_contains_urlscan_section(
+        self, urlscan_normalized_data
+    ):
+        """Test that combined enrichment contains URLScan section when data provided."""
+        result = combined_enrichment(urlscan_data=urlscan_normalized_data)
+        assert "URLSCAN.IO ANALYSIS" in result
 
     def test_combined_enrichment_contains_separators(
         self, abuseipdb_normalized_data, ipinfo_normalized_data
@@ -604,6 +716,7 @@ class TestEnrichmentConsistency:
         file_hash_virustotal_normalized_data,
         ip_alienvault_normalized_data,
         domain_alienvault_normalized_data,
+        urlscan_normalized_data,
     ):
         """Test that all enrichment functions return strings."""
         results = [
@@ -614,6 +727,7 @@ class TestEnrichmentConsistency:
             enrich_file_hash_virustotal(file_hash_virustotal_normalized_data),
             enrich_ip_alienvault(ip_alienvault_normalized_data),
             enrich_domain_alienvault(domain_alienvault_normalized_data),
+            enrich_urlscan(urlscan_normalized_data),
         ]
 
         for result in results:
@@ -629,6 +743,7 @@ class TestEnrichmentConsistency:
         file_hash_virustotal_normalized_data,
         ip_alienvault_normalized_data,
         domain_alienvault_normalized_data,
+        urlscan_normalized_data,
     ):
         """Test that all enrichment functions include analyzed time."""
         results = [
@@ -639,6 +754,7 @@ class TestEnrichmentConsistency:
             enrich_file_hash_virustotal(file_hash_virustotal_normalized_data),
             enrich_ip_alienvault(ip_alienvault_normalized_data),
             enrich_domain_alienvault(domain_alienvault_normalized_data),
+            enrich_urlscan(urlscan_normalized_data),
         ]
 
         for result in results:
@@ -653,6 +769,7 @@ class TestEnrichmentConsistency:
         file_hash_virustotal_normalized_data,
         ip_alienvault_normalized_data,
         domain_alienvault_normalized_data,
+        urlscan_normalized_data,
     ):
         """Test that all enrichment functions include source links."""
         results = [
@@ -672,6 +789,7 @@ class TestEnrichmentConsistency:
                 enrich_domain_alienvault(domain_alienvault_normalized_data),
                 "otx.alienvault.com",
             ),
+            (enrich_urlscan(urlscan_normalized_data), "urlscan.io"),
         ]
 
         for result, expected_domain in results:

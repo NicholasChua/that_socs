@@ -1,6 +1,6 @@
 """Thin wrappers for normalizing threat intelligence data from several Threat Intelligence sources into a common schema.
 
-This module supports normalization for VirusTotal, AbuseIPDB, ipinfo.io, and AlienVault OTX threat intelligence data.
+This module supports normalization for VirusTotal, AbuseIPDB, ipinfo.io, AlienVault OTX, urlscan.io threat intelligence data.
 """
 
 from datetime import datetime, timezone
@@ -826,6 +826,174 @@ def normalize_domain_alienvault_data(
         confidence_score=confidence_score,
         domain_info=domain_info,
         abuse_info=abuse_info,
+        tags=tags,
+        categories=categories,
+        additional_info=additional_info,
+    )
+
+
+def normalize_urlscan_data(raw_data: dict) -> ThreatIntelligenceNormalizedSchema:
+    """Normalize URLScan.io data into the common schema.
+
+    Args:
+        raw_data (dict): Raw JSON data from URLScan.io for a URL scan.
+
+    Returns:
+        ThreatIntelligenceNormalizedSchema: Normalized threat intelligence data.
+    """
+    # Extract task information
+    task = raw_data.get("task", {})
+    ioc = task.get("url", "")
+
+    # Extract page information
+    page = raw_data.get("page", {})
+
+    # Extract verdicts
+    verdicts = raw_data.get("verdicts", {})
+    overall_verdict = verdicts.get("overall", {})
+    urlscan_verdict = verdicts.get("urlscan", {})
+    engines_verdict = verdicts.get("engines", {})
+    community_verdict = verdicts.get("community", {})
+
+    # Determine if malicious
+    malicious = overall_verdict.get("malicious", False)
+
+    # Get confidence score from overall verdict
+    # URLScan scores range from -100 to 100, normalize to 0-100
+    overall_score = overall_verdict.get("score", 0)
+    if overall_score < 0:
+        confidence_score = 0
+    else:
+        confidence_score = min(overall_score, 100)
+
+    # Build detection stats from engines verdict
+    detection_stats = None
+    if engines_verdict.get("hasVerdicts"):
+        detection_stats = {
+            "malicious": engines_verdict.get("maliciousTotal", 0),
+            "suspicious": 0,  # URLScan doesn't have this category
+            "harmless": engines_verdict.get("benignTotal", 0),
+            "undetected": 0,
+            "total": engines_verdict.get("enginesTotal", 0),
+        }
+
+    # Extract geo info from page
+    geo_info = {
+        "country": page.get("country"),
+        "city": page.get("city"),
+    }
+
+    # Extract network info
+    network_info = {
+        "asn": page.get("asn"),
+        "organization": page.get("asnname"),
+        "domain": page.get("domain"),
+    }
+
+    # Extract domain info
+    domain_info = None
+    apex_domain = page.get("apexDomain")
+    if apex_domain:
+        domain_info = {
+            "apex_domain": apex_domain,
+            "domain_age_days": page.get("domainAgeDays"),
+            "apex_domain_age_days": page.get("apexDomainAgeDays"),
+            "tls_issuer": page.get("tlsIssuer"),
+            "tls_valid_days": page.get("tlsValidDays"),
+            "tls_age_days": page.get("tlsAgeDays"),
+            "tls_valid_from": page.get("tlsValidFrom"),
+        }
+
+    # Extract timestamps
+    timestamps = {
+        "scan_time": task.get("time"),
+    }
+
+    # Combine tags from overall verdict and task
+    tags = []
+    tags.extend(overall_verdict.get("tags", []))
+    tags.extend(task.get("tags", []))
+    tags.extend(engines_verdict.get("tags", []))
+    tags = list(set(tags))  # Deduplicate
+
+    # Extract categories from verdicts
+    categories = []
+    categories.extend(overall_verdict.get("categories", []))
+    categories.extend(urlscan_verdict.get("categories", []))
+    categories.extend(engines_verdict.get("categories", []))
+    categories = list(set(categories))  # Deduplicate
+
+    # Extract brands
+    brands = []
+    brands.extend(overall_verdict.get("brands", []))
+    brands.extend(urlscan_verdict.get("brands", []))
+    brands = list(set(brands))  # Deduplicate
+
+    # Extract lists
+    lists = raw_data.get("lists", {})
+
+    # Extract stats
+    stats = raw_data.get("stats", {})
+
+    # Build additional info
+    additional_info = {
+        "scan_uuid": task.get("uuid"),
+        "report_url": task.get("reportURL"),
+        "screenshot_url": task.get("screenshotURL"),
+        "dom_url": task.get("domURL"),
+        "visibility": task.get("visibility"),
+        "submitter_country": raw_data.get("submitter", {}).get("country"),
+        "scanner_country": raw_data.get("scanner", {}).get("country"),
+        "page_ip": page.get("ip"),
+        "page_status": page.get("status"),
+        "page_title": page.get("title"),
+        "page_server": page.get("server"),
+        "page_mime_type": page.get("mimeType"),
+        "page_language": page.get("language"),
+        "umbrella_rank": page.get("umbrellaRank"),
+        "redirected": page.get("redirected"),
+        "brands": brands,
+        "associated_ips": lists.get("ips", []),
+        "associated_domains": lists.get("domains", []),
+        "associated_urls": lists.get("urls", []),
+        "link_domains": lists.get("linkDomains", []),
+        "certificates": lists.get("certificates", []),
+        "hashes": lists.get("hashes", []),
+        "malicious_count": stats.get("malicious", 0),
+        "total_links": stats.get("totalLinks", 0),
+        "ad_blocked": stats.get("adBlocked", 0),
+        "secure_percentage": stats.get("securePercentage", 0),
+        "community_votes": {
+            "total": community_verdict.get("votesTotal", 0),
+            "malicious": community_verdict.get("votesMalicious", 0),
+            "benign": community_verdict.get("votesBenign", 0),
+        },
+        "engines_verdicts": {
+            "malicious": engines_verdict.get("maliciousVerdicts", []),
+            "benign": engines_verdict.get("benignVerdicts", []),
+        },
+    }
+
+    # Logging for debugging
+    logger.debug(
+        "Normalized URLScan data for IOC %s: malicious=%s, score=%s, engines_total=%s",
+        ioc,
+        malicious,
+        overall_score,
+        engines_verdict.get("enginesTotal", 0),
+    )
+
+    return ThreatIntelligenceNormalizedSchema(
+        source="URLScan.io",
+        ioc_type="url",
+        ioc=ioc,
+        malicious=malicious,
+        confidence_score=confidence_score,
+        detection_stats=detection_stats,
+        geo_info=geo_info,
+        network_info=network_info,
+        domain_info=domain_info,
+        timestamps=timestamps,
         tags=tags,
         categories=categories,
         additional_info=additional_info,

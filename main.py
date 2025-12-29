@@ -1,6 +1,6 @@
 import helper_functions.retrieve_threat_intelligence as rti
 import helper_functions.normalize_threat_intelligence as nti
-from helper_functions.enrichment import combined_enrichment
+from helper_functions.enrich_threat_intelligence import combined_enrichment
 import json
 
 
@@ -13,12 +13,14 @@ def main():
     ip_address = "118.25.6.39"
     file_hash = "44d88612fea8a8f36de82e1278abb02f"
     domain_name = "polyfill.io"
+    urlscan_url = "https://urlscan.io"
 
     # Initialize clients
     vt_client = rti.VirusTotalClient()
     abuse_client = rti.AbuseIPDBClient()
     ipinfo_client = rti.IPInfoClient()
     alienvault_client = rti.AlienVaultClient()
+    urlscan_client = rti.URLScanClient()
 
     # Fetch data from VirusTotal
     vt_ip_data = vt_client.fetch_ip(ip_address)
@@ -35,6 +37,9 @@ def main():
     alienvault_ip_data = alienvault_client.fetch_ip(ip_address)
     alienvault_domain_data = alienvault_client.fetch_domain(domain_name)
 
+    # Fetch data from URLScan.io
+    urlscan_result = urlscan_client.fetch_url_scan_result(urlscan_client.submit_url(urlscan_url))
+
     # Save data before normalization
     with open("ip_virustotal_result.json", "w") as f:
         json.dump(vt_ip_data, f, indent=4)
@@ -50,6 +55,13 @@ def main():
         json.dump(alienvault_ip_data, f, indent=4)
     with open("domain_alienvault_result.json", "w") as f:
         json.dump(alienvault_domain_data, f, indent=4)
+    with open("urlscan_result.json", "w") as f:
+        json.dump(urlscan_result, f, indent=4)
+
+    # URLScan screenshot fetching example
+    urlscan_client.fetch_url_scan_screenshot(
+        urlscan_client.submit_url(urlscan_url), "example_urlscan_screenshot.png"
+    )
 
     # Test data normalization
 
@@ -68,6 +80,8 @@ def main():
         alienvault_ip_data = json.load(f)
     with open("domain_alienvault_result.json", "r") as f:
         alienvault_domain_data = json.load(f)
+    with open("urlscan_result.json", "r") as f:
+        urlscan_data = json.load(f)
 
     # Normalize data
     abuseipdb_normalized = nti.normalize_abuseipdb_data(abuse_data)
@@ -77,6 +91,7 @@ def main():
     virustotal_domain_normalized = nti.normalize_domain_virustotal_data(vt_domain_data)
     alienvault_ip_normalized = nti.normalize_ip_alienvault_data(alienvault_ip_data)
     alienvault_domain_normalized = nti.normalize_domain_alienvault_data(alienvault_domain_data)
+    urlscan_normalized = nti.normalize_urlscan_data(urlscan_data)
 
     # Save normalized outputs as `normalized_*.json` files
     with open("normalized_abuseipdb.json", "w") as f:
@@ -93,6 +108,8 @@ def main():
         json.dump(alienvault_ip_normalized.__dict__, f, indent=4)
     with open("normalized_domain_alienvault.json", "w") as f:
         json.dump(alienvault_domain_normalized.__dict__, f, indent=4)
+    with open("normalized_urlscan.json", "w") as f:
+        json.dump(urlscan_normalized.__dict__, f, indent=4)
 
     # Test enrichment
 
@@ -107,10 +124,12 @@ def main():
         vt_file_data = json.load(f)
     with open("normalized_domain_virustotal.json", "r") as f:
         vt_domain_data = json.load(f)
-    with open("example_data/normalized_ip_alienvault.json", "r") as f:
+    with open("normalized_ip_alienvault.json", "r") as f:
         alienvault_ip_data = json.load(f)
-    with open("example_data/normalized_domain_alienvault.json", "r") as f:
+    with open("normalized_domain_alienvault.json", "r") as f:
         alienvault_domain_data = json.load(f)
+    with open("normalized_urlscan.json", "r") as f:
+        urlscan_data = json.load(f)
 
     # Run combined comments
     enriched_comment = combined_enrichment(
@@ -121,6 +140,7 @@ def main():
         file_hash_virustotal_data=vt_file_data,
         ip_alienvault_data=alienvault_ip_data,
         domain_alienvault_data=alienvault_domain_data,
+        urlscan_data=urlscan_data
     )
 
     print(enriched_comment)

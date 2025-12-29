@@ -16,6 +16,7 @@ from helper_functions.normalize_threat_intelligence import (
     normalize_domain_virustotal_data,
     normalize_ip_alienvault_data,
     normalize_domain_alienvault_data,
+    normalize_urlscan_data,
 )
 
 
@@ -75,6 +76,13 @@ def domain_alienvault_raw_data():
     with open(
         os.path.join(EXAMPLE_DATA_DIR, "domain_alienvault_result.json"), "r"
     ) as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def urlscan_raw_data():
+    """Load raw URLScan.io data from example file."""
+    with open(os.path.join(EXAMPLE_DATA_DIR, "urlscan_result.json"), "r") as f:
         return json.load(f)
 
 
@@ -486,6 +494,108 @@ class TestNormalizeAlienVaultDomain:
         assert result.normalized_time is not None
 
 
+class TestNormalizeURLScan:
+    """Test suite for URLScan.io data normalization."""
+
+    def test_normalize_urlscan_returns_correct_schema(self, urlscan_raw_data):
+        """Test that normalize_urlscan_data returns ThreatIntelligenceNormalizedSchema instance."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert isinstance(result, ThreatIntelligenceNormalizedSchema)
+
+    def test_normalize_urlscan_source_field(self, urlscan_raw_data):
+        """Test that source field is correctly set to 'URLScan.io'."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert result.source == "URLScan.io"
+
+    def test_normalize_urlscan_ioc_type(self, urlscan_raw_data):
+        """Test that ioc_type field is correctly set to 'url'."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert result.ioc_type == "url"
+
+    def test_normalize_urlscan_ioc_value(self, urlscan_raw_data):
+        """Test that ioc field contains the URL."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert result.ioc is not None
+        assert len(result.ioc) > 0
+
+    def test_normalize_urlscan_malicious_flag(self, urlscan_raw_data):
+        """Test that malicious flag is set based on verdicts."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert isinstance(result.malicious, bool)
+
+    def test_normalize_urlscan_confidence_score(self, urlscan_raw_data):
+        """Test that confidence_score is extracted."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        # confidence_score should be present and in valid range
+        if result.confidence_score is not None:
+            assert isinstance(result.confidence_score, int)
+            assert 0 <= result.confidence_score <= 100
+
+    def test_normalize_urlscan_detection_stats(self, urlscan_raw_data):
+        """Test that detection_stats dictionary is populated if engines have verdicts."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        # detection_stats may or may not be present depending on data
+        if result.detection_stats is not None:
+            assert isinstance(result.detection_stats, dict)
+            assert "malicious" in result.detection_stats
+            assert "total" in result.detection_stats
+
+    def test_normalize_urlscan_geo_info(self, urlscan_raw_data):
+        """Test that geo_info dictionary is populated."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert result.geo_info is not None
+        assert isinstance(result.geo_info, dict)
+
+    def test_normalize_urlscan_network_info(self, urlscan_raw_data):
+        """Test that network_info dictionary is populated."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert result.network_info is not None
+        assert isinstance(result.network_info, dict)
+
+    def test_normalize_urlscan_domain_info(self, urlscan_raw_data):
+        """Test that domain_info dictionary is populated if apex domain exists."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        # domain_info may or may not be present depending on data
+        if result.domain_info is not None:
+            assert isinstance(result.domain_info, dict)
+
+    def test_normalize_urlscan_timestamps(self, urlscan_raw_data):
+        """Test that timestamps dictionary is populated."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert result.timestamps is not None
+        assert isinstance(result.timestamps, dict)
+
+    def test_normalize_urlscan_tags(self, urlscan_raw_data):
+        """Test that tags list is populated."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert isinstance(result.tags, list)
+
+    def test_normalize_urlscan_categories(self, urlscan_raw_data):
+        """Test that categories list is populated."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert isinstance(result.categories, list)
+
+    def test_normalize_urlscan_additional_info(self, urlscan_raw_data):
+        """Test that additional_info dictionary is populated."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert result.additional_info is not None
+        assert isinstance(result.additional_info, dict)
+        # Check for key fields
+        assert "scan_uuid" in result.additional_info
+        assert "report_url" in result.additional_info
+        assert "screenshot_url" in result.additional_info
+
+    def test_normalize_urlscan_schema_version(self, urlscan_raw_data):
+        """Test that schema_version is set."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert result.schema_version is not None
+
+    def test_normalize_urlscan_normalized_time(self, urlscan_raw_data):
+        """Test that normalized_time is set."""
+        result = normalize_urlscan_data(urlscan_raw_data)
+        assert result.normalized_time is not None
+
+
 class TestNormalizationConsistency:
     """Test suite for consistency across different normalization functions."""
 
@@ -498,6 +608,7 @@ class TestNormalizationConsistency:
         domain_virustotal_raw_data,
         ip_alienvault_raw_data,
         domain_alienvault_raw_data,
+        urlscan_raw_data,
     ):
         """Test that all normalization functions set schema_version."""
         results = [
@@ -508,6 +619,7 @@ class TestNormalizationConsistency:
             normalize_domain_virustotal_data(domain_virustotal_raw_data),
             normalize_ip_alienvault_data(ip_alienvault_raw_data),
             normalize_domain_alienvault_data(domain_alienvault_raw_data),
+            normalize_urlscan_data(urlscan_raw_data),
         ]
 
         for result in results:
@@ -522,6 +634,7 @@ class TestNormalizationConsistency:
         domain_virustotal_raw_data,
         ip_alienvault_raw_data,
         domain_alienvault_raw_data,
+        urlscan_raw_data,
     ):
         """Test that all normalization functions set normalized_time."""
         results = [
@@ -532,6 +645,7 @@ class TestNormalizationConsistency:
             normalize_domain_virustotal_data(domain_virustotal_raw_data),
             normalize_ip_alienvault_data(ip_alienvault_raw_data),
             normalize_domain_alienvault_data(domain_alienvault_raw_data),
+            normalize_urlscan_data(urlscan_raw_data),
         ]
 
         for result in results:
@@ -546,6 +660,7 @@ class TestNormalizationConsistency:
         domain_virustotal_raw_data,
         ip_alienvault_raw_data,
         domain_alienvault_raw_data,
+        urlscan_raw_data,
     ):
         """Test that all normalization functions set source field."""
         results = [
@@ -556,6 +671,7 @@ class TestNormalizationConsistency:
             normalize_domain_virustotal_data(domain_virustotal_raw_data),
             normalize_ip_alienvault_data(ip_alienvault_raw_data),
             normalize_domain_alienvault_data(domain_alienvault_raw_data),
+            normalize_urlscan_data(urlscan_raw_data),
         ]
 
         for result in results:
@@ -571,6 +687,7 @@ class TestNormalizationConsistency:
         domain_virustotal_raw_data,
         ip_alienvault_raw_data,
         domain_alienvault_raw_data,
+        urlscan_raw_data,
     ):
         """Test that all normalization functions set ioc field."""
         results = [
@@ -581,6 +698,7 @@ class TestNormalizationConsistency:
             normalize_domain_virustotal_data(domain_virustotal_raw_data),
             normalize_ip_alienvault_data(ip_alienvault_raw_data),
             normalize_domain_alienvault_data(domain_alienvault_raw_data),
+            normalize_urlscan_data(urlscan_raw_data),
         ]
 
         for result in results:
@@ -596,6 +714,7 @@ class TestNormalizationConsistency:
         domain_virustotal_raw_data,
         ip_alienvault_raw_data,
         domain_alienvault_raw_data,
+        urlscan_raw_data,
     ):
         """Test that all normalization functions set ioc_type field."""
         results = [
@@ -606,6 +725,7 @@ class TestNormalizationConsistency:
             normalize_domain_virustotal_data(domain_virustotal_raw_data),
             normalize_ip_alienvault_data(ip_alienvault_raw_data),
             normalize_domain_alienvault_data(domain_alienvault_raw_data),
+            normalize_urlscan_data(urlscan_raw_data),
         ]
 
         valid_ioc_types = {"ip", "file_hash", "domain", "url"}

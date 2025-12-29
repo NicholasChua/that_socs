@@ -1,6 +1,6 @@
 """Thin wrappers for generating comments from normalized threat intelligence data.
 
-This module supports normalized VirusTotal, AbuseIPDB and ipinfo.io threat intelligence data produced by the `normalize_threat_intelligence` module. Refer to the schema defined under :class:`ThreatIntelligenceNormalizedSchema` in that module for details on the expected input data structure.
+This module supports normalized VirusTotal, AbuseIPDB, ipinfo.io, AlienVault OTX, urlscan.io threat intelligence data produced by the `normalize_threat_intelligence` module. Refer to the schema defined under :class:`ThreatIntelligenceNormalizedSchema` in that module for details on the expected input data structure.
 """
 
 
@@ -388,6 +388,149 @@ def enrich_domain_alienvault(data: dict) -> str:
     return comment
 
 
+def enrich_urlscan(data: dict) -> str:
+    """Enrich URLScan.io normalized data.
+
+    Args:
+        data: Normalized URLScan.io data dictionary
+
+    Returns:
+        str: A human-readable comment string
+    """
+    time_generated = data.get("normalized_time", "Unknown")
+    ioc = data.get("ioc", "Unknown")
+    malicious = data.get("malicious", False)
+    confidence = data.get("confidence_score", 0)
+
+    additional_info = data.get("additional_info", {})
+    report_url = additional_info.get("report_url", "Unknown")
+
+    comment = f"Analyzed at: {time_generated}\n"
+    comment += f"URLScan Report: {report_url}\n"
+    comment += f"Defanged URL: {ioc.replace('http://', 'hxxp://').replace('https://', 'hxxps://').replace('.', '[.]')}\n"
+    comment += f"Status: {'🚨 MALICIOUS' if malicious else '✓ Clean'}\n"
+    comment += f"Confidence Score: {confidence}%\n"
+
+    # Detection stats
+    detection_stats = data.get("detection_stats", {})
+    if detection_stats and detection_stats.get("total", 0) > 0:
+        malicious_count = detection_stats.get("malicious", 0)
+        harmless_count = detection_stats.get("harmless", 0)
+        total = detection_stats.get("total", 0)
+
+        comment += f"Engine Detection: {malicious_count}/{total} engines flagged as malicious\n"
+
+    # Page information
+    page_title = additional_info.get("page_title")
+    page_status = additional_info.get("page_status")
+    page_server = additional_info.get("page_server")
+
+    if page_title:
+        comment += f"Page Title: {page_title}\n"
+    if page_status:
+        comment += f"HTTP Status: {page_status}\n"
+    if page_server:
+        comment += f"Server: {page_server}\n"
+
+    # Domain information
+    domain_info = data.get("domain_info", {})
+    if domain_info:
+        apex_domain = domain_info.get("apex_domain")
+        domain_age_days = domain_info.get("domain_age_days")
+        tls_issuer = domain_info.get("tls_issuer")
+        tls_valid_days = domain_info.get("tls_valid_days")
+
+        if apex_domain:
+            comment += f"Apex Domain: {apex_domain}\n"
+        if domain_age_days is not None:
+            comment += f"Domain Age: {domain_age_days} days\n"
+        if tls_issuer:
+            comment += f"TLS Issuer: {tls_issuer}\n"
+        if tls_valid_days is not None:
+            comment += f"TLS Valid Days: {tls_valid_days}\n"
+
+    # Location and network
+    geo_info = data.get("geo_info", {})
+    if geo_info:
+        city = geo_info.get("city")
+        country = geo_info.get("country")
+
+        location_parts = []
+        if city:
+            location_parts.append(city)
+        if country:
+            location_parts.append(country)
+
+        if location_parts:
+            comment += f"Location: {', '.join(location_parts)}\n"
+
+    network_info = data.get("network_info", {})
+    if network_info:
+        asn = network_info.get("asn")
+        org = network_info.get("organization")
+        domain = network_info.get("domain")
+
+        if asn:
+            comment += f"ASN: {asn}\n"
+        if org:
+            comment += f"Organization: {org}\n"
+
+    # Associated resources
+    associated_ips = additional_info.get("associated_ips", [])
+    if associated_ips:
+        comment += f"Associated IPs ({len(associated_ips)}): {', '.join(associated_ips[:5])}"
+        if len(associated_ips) > 5:
+            comment += f" (+{len(associated_ips) - 5} more)"
+        comment += "\n"
+
+    associated_domains = additional_info.get("associated_domains", [])
+    if associated_domains:
+        comment += f"Associated Domains ({len(associated_domains)}): {', '.join(associated_domains[:5])}"
+        if len(associated_domains) > 5:
+            comment += f" (+{len(associated_domains) - 5} more)"
+        comment += "\n"
+
+    # Security metrics
+    malicious_count = additional_info.get("malicious_count", 0)
+    secure_percentage = additional_info.get("secure_percentage")
+    total_links = additional_info.get("total_links", 0)
+
+    if malicious_count > 0:
+        comment += f"⚠️ Malicious Resources Found: {malicious_count}\n"
+    if secure_percentage is not None:
+        comment += f"Secure Requests: {secure_percentage}%\n"
+    if total_links > 0:
+        comment += f"Total Links: {total_links}\n"
+
+    # Brands
+    brands = additional_info.get("brands", [])
+    if brands:
+        comment += f"Detected Brands: {', '.join(brands)}\n"
+
+    # Tags
+    tags = data.get("tags", [])
+    if tags:
+        comment += f"Tags: {', '.join(tags[:8])}"
+        if len(tags) > 8:
+            comment += f" (+{len(tags) - 8} more)"
+        comment += "\n"
+
+    # Categories
+    categories = data.get("categories", [])
+    if categories:
+        comment += f"Categories: {', '.join(categories[:5])}"
+        if len(categories) > 5:
+            comment += f" (+{len(categories) - 5} more)"
+        comment += "\n"
+
+    # Screenshots and resources
+    screenshot_url = additional_info.get("screenshot_url")
+    if screenshot_url:
+        comment += f"Screenshot: {screenshot_url}\n"
+
+    return comment
+
+
 def combined_enrichment(
     abuseipdb_data: dict | None = None,
     ipinfo_data: dict | None = None,
@@ -396,6 +539,7 @@ def combined_enrichment(
     file_hash_virustotal_data: dict | None = None,
     ip_alienvault_data: dict | None = None,
     domain_alienvault_data: dict | None = None,
+    urlscan_data: dict | None = None,
 ) -> str:
     """Combine comments from multiple threat intelligence sources.
 
@@ -407,6 +551,7 @@ def combined_enrichment(
         file_hash_virustotal_data: Normalized VirusTotal file hash data dictionary
         ip_alienvault_data: Normalized AlienVault OTX IP data dictionary
         domain_alienvault_data: Normalized AlienVault OTX domain data dictionary
+        urlscan_data: Normalized URLScan.io data dictionary
         
     Returns:
         str: A combined human-readable comment string from all provided sources
@@ -454,6 +599,12 @@ def combined_enrichment(
         comments.append("ALIENVAULT OTX DOMAIN ANALYSIS")
         comments.append("=" * 60)
         comments.append(enrich_domain_alienvault(domain_alienvault_data))
+
+    if urlscan_data:
+        comments.append("=" * 60)
+        comments.append("URLSCAN.IO ANALYSIS")
+        comments.append("=" * 60)
+        comments.append(enrich_urlscan(urlscan_data))
 
     if not comments:
         return "No threat intelligence data provided."

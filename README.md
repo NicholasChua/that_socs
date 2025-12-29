@@ -23,6 +23,7 @@ This project was tested on Python 3.14.2.
 - ipinfo.io API key (free tier is sufficient)
 - AbuseIPDB API key (free tier is sufficient)
 - AlienVault OTX API key (free tier is sufficient)
+- URLScan.io API key (free tier is sufficient)
 - .env file containing API keys
 
 ## How to Get API Keys
@@ -79,6 +80,20 @@ This project was tested on Python 3.14.2.
 
 ![AlienVault OTX API Key](readme_media/ao_api_key.png)
 
+### URLScan.io
+
+1. Register for a free URLScan.io account: [https://urlscan.io/user/signup/](https://urlscan.io/user/signup/).
+
+![URLScan Sign Up Page](readme_media/us_signup.png)
+
+2. After registering and logging in, navigate to your profile by clicking on your username in the top-right corner. Click on `Settings & API` on the left. Click on `New API Key` to generate a new API key.
+
+![URLScan Profile](readme_media/us_profile.png)
+
+3. Give your API key a name, then click on `Create API Key`. Returning to the profile, you can now copy your API key.
+
+![URLScan API Key](readme_media/us_api_key.png)
+
 ### .env File Setup
 
 **`Warning`**: Do not share, upload, commit, or otherwise expose your API keys to the public. This can lead to unauthorized access and usage of your API keys. The `.env` file is used to store your API keys in a secure manner, and has been added to the `.gitignore` file to prevent accidental exposure.
@@ -90,9 +105,10 @@ VIRUSTOTAL_API_KEY=YOUR VIRUSTOTAL API KEY
 IPINFO_API_KEY=YOUR IPINFO API KEY
 ABUSEIPDB_API_KEY=YOUR ABUSEIPDB API KEY
 ALIENVAULT_API_KEY=YOUR ALIENVAULT API KEY
+URLSCAN_API_KEY=YOUR URLSCAN API KEY
 ```
 
-2. Replace `YOUR VIRUSTOTAL API KEY`, `YOUR IPINFO API KEY`, `YOUR ABUSEIPDB API KEY`, `YOUR ALIENVAULT API KEY` with the respective API keys you obtained in the previous steps.
+2. Replace `YOUR VIRUSTOTAL API KEY`, `YOUR IPINFO API KEY`, `YOUR ABUSEIPDB API KEY`, `YOUR ALIENVAULT API KEY`, `URLSCAN_API_KEY` with the respective API keys you obtained in the previous steps.
 
 3. Ensure that the `.env` file is in the root directory of the project.
 
