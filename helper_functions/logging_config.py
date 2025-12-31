@@ -2,7 +2,7 @@ import logging
 import os
 from datetime import datetime, timezone
 
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 
 
 # Custom Formatter class to use ISO8601 format with UTC timezone
@@ -23,7 +23,7 @@ def setup_logger(
     name: str,
     log_file: str,
     log_directory: str = "logs",
-    level: str = LOG_LEVEL,
+    level: int = LOG_LEVEL,
 ) -> logging.Logger:
     """Function to set up a logger with the specified name, log file, and level.
     Levels are as follows:
