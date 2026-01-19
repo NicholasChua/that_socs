@@ -1,6 +1,6 @@
 """Thin wrappers for generating comments from normalized threat intelligence data.
 
-This module supports normalized VirusTotal, AbuseIPDB, ipinfo.io, AlienVault OTX, urlscan.io threat intelligence data produced by the `normalize_threat_intelligence` module. Refer to the schema defined under :class:`ThreatIntelligenceNormalizedSchema` in that module for details on the expected input data structure.
+This module supports normalized VirusTotal, AbuseIPDB, ipinfo.io, AlienVault OTX, urlscan.io, Shodan threat intelligence data produced by the `normalize_threat_intelligence` module. Refer to the schema defined under :class:`ThreatIntelligenceNormalizedSchema` in that module for details on the expected input data structure.
 """
 
 
@@ -531,6 +531,105 @@ def enrich_urlscan(data: dict) -> str:
     return comment
 
 
+def enrich_shodan(data: dict) -> str:
+    """Enrich Shodan normalized data.
+
+    Args:
+        data: Normalized Shodan data dictionary
+
+    Returns:
+        str: A human-readable comment string
+    """
+    time_generated = data.get("normalized_time", "Unknown")
+    ioc = data.get("ioc", "Unknown")
+    malicious = data.get("malicious", False)
+
+    comment = f"Analyzed at: {time_generated}\n"
+    comment += f"Shodan Link: https://www.shodan.io/host/{ioc}\n"
+    comment += f"Defanged IP: {ioc.replace('.', '[.]')}\n"
+    comment += f"Status: {'⚠️ MALICIOUS' if malicious else '✓ Clean'}\n"
+
+    # Geo information
+    geo_info = data.get("geo_info", {})
+    if geo_info:
+        city = geo_info.get("city")
+        country = geo_info.get("country", "Unknown")
+        coordinates = geo_info.get("coordinates")
+
+        location_parts = []
+        if city:
+            location_parts.append(city)
+        if country:
+            location_parts.append(country)
+
+        if location_parts:
+            comment += f"Location: {', '.join(location_parts)}\n"
+        if coordinates:
+            comment += f"Coordinates: {coordinates}\n"
+
+    # Network information
+    network_info = data.get("network_info", {})
+    if network_info:
+        asn = network_info.get("asn")
+        org = network_info.get("organization", "Unknown")
+        hostnames = network_info.get("hostnames", [])
+        domains = network_info.get("domains", [])
+
+        if asn:
+            comment += f"ASN: {asn}\n"
+        comment += f"Organization: {org}\n"
+
+        if hostnames:
+            comment += f"Hostnames: {', '.join(hostnames)}\n"
+        if domains and domains != hostnames:
+            comment += f"Domains: {', '.join(domains)}\n"
+
+    # Additional information (ports, OS, etc.)
+    additional_info = data.get("additional_info", {})
+    if additional_info:
+        ports = additional_info.get("ports", [])
+        os = additional_info.get("os")
+        data_count = additional_info.get("data_count")
+
+        if ports:
+            comment += f"Open Ports: {', '.join(map(str, ports))}\n"
+        if os:
+            comment += f"Operating System: {os}\n"
+        if data_count is not None:
+            comment += f"Data Records: {data_count}\n"
+
+    # Abuse information
+    abuse_info = data.get("abuse_info", {})
+    if abuse_info:
+        vulnerabilities = abuse_info.get("vulnerabilities", [])
+        tag_count = abuse_info.get("tag_count", 0)
+
+        if vulnerabilities:
+            comment += f"⚠️ Vulnerabilities ({len(vulnerabilities)}): {', '.join(vulnerabilities[:5])}"
+            if len(vulnerabilities) > 5:
+                comment += f" (+{len(vulnerabilities) - 5} more)"
+            comment += "\n"
+        if tag_count > 0:
+            comment += f"Tag Count: {tag_count}\n"
+
+    # Timestamps
+    timestamps = data.get("timestamps", {})
+    if timestamps:
+        last_update = timestamps.get("last_update")
+        if last_update:
+            comment += f"Last Updated: {last_update}\n"
+
+    # Tags
+    tags = data.get("tags", [])
+    if tags:
+        comment += f"Tags: {', '.join(tags[:8])}"
+        if len(tags) > 8:
+            comment += f" (+{len(tags) - 8} more)"
+        comment += "\n"
+
+    return comment
+
+
 def combined_enrichment(
     abuseipdb_data: dict | None = None,
     ipinfo_data: dict | None = None,
@@ -540,6 +639,7 @@ def combined_enrichment(
     ip_alienvault_data: dict | None = None,
     domain_alienvault_data: dict | None = None,
     urlscan_data: dict | None = None,
+    shodan_data: dict | None = None,
 ) -> str:
     """Combine comments from multiple threat intelligence sources.
 
@@ -552,6 +652,7 @@ def combined_enrichment(
         ip_alienvault_data: Normalized AlienVault OTX IP data dictionary
         domain_alienvault_data: Normalized AlienVault OTX domain data dictionary
         urlscan_data: Normalized URLScan.io data dictionary
+        shodan_data: Normalized Shodan data dictionary
         
     Returns:
         str: A combined human-readable comment string from all provided sources
@@ -605,6 +706,12 @@ def combined_enrichment(
         comments.append("URLSCAN.IO ANALYSIS")
         comments.append("=" * 60)
         comments.append(enrich_urlscan(urlscan_data))
+
+    if shodan_data:
+        comments.append("=" * 60)
+        comments.append("SHODAN ANALYSIS")
+        comments.append("=" * 60)
+        comments.append(enrich_shodan(shodan_data))
 
     if not comments:
         return "No threat intelligence data provided."

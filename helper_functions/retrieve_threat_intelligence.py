@@ -8,6 +8,7 @@ Supported environment variables:
 - `IPINFO_API_KEY`
 - `ALIENVAULT_API_KEY`
 - `URLSCAN_API_KEY`
+- `SHODAN_API_KEY`
 
 The clients expose simple `fetch_*` methods returning parsed JSON responses from the respective services.
 """
@@ -306,6 +307,35 @@ class URLScanClient(BaseClient):
         raise ValueError(
             f"Failed to retrieve screenshot for UUID {url_scan_uuid} after {max_retries} attempts."
         )
+
+
+class ShodanClient(BaseClient):
+    """Client for querying Shodan for IP threat intelligence data.
+
+    Args:
+        session (requests.Session | None): Optional session passed to :class:`BaseClient`.
+
+    Attributes:
+        api_key (str | None): Value of the `SHODAN_API_KEY` environment variable.
+    """
+
+    def __init__(self, session: requests.Session | None = None):
+        super().__init__(session=session)
+        self.api_key = os.getenv("SHODAN_API_KEY")
+
+    def fetch_ip(self, ip: str) -> dict:
+        """Fetch IP information from Shodan.
+
+        Args:
+            ip (str): IP address to query.
+
+        Returns:
+            dict: Parsed JSON response.
+        """
+        url = f"https://api.shodan.io/shodan/host/{ip}"
+        params = {"key": self.api_key}
+        response = self.request("GET", url, params=params, timeout=10)
+        return response.json()
 
 
 # Import environment variables from .env file

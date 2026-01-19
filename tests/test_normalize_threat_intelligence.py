@@ -17,6 +17,7 @@ from helper_functions.normalize_threat_intelligence import (
     normalize_ip_alienvault_data,
     normalize_domain_alienvault_data,
     normalize_urlscan_data,
+    normalize_shodan_ip_data,
 )
 
 
@@ -83,6 +84,13 @@ def domain_alienvault_raw_data():
 def urlscan_raw_data():
     """Load raw URLScan.io data from example file."""
     with open(os.path.join(EXAMPLE_DATA_DIR, "urlscan_result.json"), "r") as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def shodan_raw_data():
+    """Load raw Shodan IP data from example file."""
+    with open(os.path.join(EXAMPLE_DATA_DIR, "shodan_ip_result.json"), "r") as f:
         return json.load(f)
 
 
@@ -732,3 +740,46 @@ class TestNormalizationConsistency:
         for result in results:
             assert result.ioc_type is not None
             assert result.ioc_type in valid_ioc_types
+
+
+    class TestNormalizeShodan:
+        """Test suite for Shodan IP data normalization."""
+
+        def test_normalize_shodan_returns_correct_schema(self, shodan_raw_data):
+            result = normalize_shodan_ip_data(shodan_raw_data)
+            assert isinstance(result, ThreatIntelligenceNormalizedSchema)
+
+        def test_normalize_shodan_source_field(self, shodan_raw_data):
+            result = normalize_shodan_ip_data(shodan_raw_data)
+            assert result.source == "Shodan"
+
+        def test_normalize_shodan_ioc_type(self, shodan_raw_data):
+            result = normalize_shodan_ip_data(shodan_raw_data)
+            assert result.ioc_type == "ip"
+
+        def test_normalize_shodan_ioc_value(self, shodan_raw_data):
+            result = normalize_shodan_ip_data(shodan_raw_data)
+            assert result.ioc is not None
+            assert len(result.ioc) > 0
+
+        def test_normalize_shodan_geo_info(self, shodan_raw_data):
+            result = normalize_shodan_ip_data(shodan_raw_data)
+            assert result.geo_info is not None
+            assert isinstance(result.geo_info, dict)
+
+        def test_normalize_shodan_network_info(self, shodan_raw_data):
+            result = normalize_shodan_ip_data(shodan_raw_data)
+            assert result.network_info is not None
+            assert isinstance(result.network_info, dict)
+            assert "asn" in result.network_info or "organization" in result.network_info
+
+        def test_normalize_shodan_additional_info_ports(self, shodan_raw_data):
+            result = normalize_shodan_ip_data(shodan_raw_data)
+            ports = result.additional_info.get("ports")
+            assert isinstance(ports, list)
+            assert len(ports) > 0
+
+        def test_normalize_shodan_timestamps(self, shodan_raw_data):
+            result = normalize_shodan_ip_data(shodan_raw_data)
+            assert result.timestamps is not None
+            assert "last_update" in result.timestamps

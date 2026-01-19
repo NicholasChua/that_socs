@@ -16,6 +16,7 @@ from helper_functions.enrich_threat_intelligence import (
     enrich_ip_alienvault,
     enrich_domain_alienvault,
     enrich_urlscan,
+    enrich_shodan,
     combined_enrichment,
 )
 
@@ -87,6 +88,13 @@ def domain_alienvault_normalized_data():
 def urlscan_normalized_data():
     """Load normalized URLScan.io data from example file."""
     with open(os.path.join(EXAMPLE_DATA_DIR, "normalized_urlscan.json"), "r") as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def shodan_normalized_data():
+    """Load normalized Shodan data from example file."""
+    with open(os.path.join(EXAMPLE_DATA_DIR, "normalized_shodan_ip.json"), "r") as f:
         return json.load(f)
 
 
@@ -570,6 +578,51 @@ class TestEnrichURLScan:
     def test_enrich_urlscan_not_empty(self, urlscan_normalized_data):
         """Test that enrichment result is not empty."""
         result = enrich_urlscan(urlscan_normalized_data)
+        assert len(result) > 0
+
+
+class TestEnrichShodan:
+    """Test suite for Shodan enrichment."""
+
+    def test_enrich_shodan_returns_string(self, shodan_normalized_data):
+        result = enrich_shodan(shodan_normalized_data)
+        assert isinstance(result, str)
+
+    def test_enrich_shodan_contains_analyzed_time(self, shodan_normalized_data):
+        result = enrich_shodan(shodan_normalized_data)
+        assert "Analyzed at:" in result
+
+    def test_enrich_shodan_contains_link(self, shodan_normalized_data):
+        result = enrich_shodan(shodan_normalized_data)
+        assert "Shodan Link:" in result
+        assert "shodan.io" in result
+
+    def test_enrich_shodan_contains_defanged_ip(self, shodan_normalized_data):
+        result = enrich_shodan(shodan_normalized_data)
+        assert "Defanged IP:" in result
+        assert "[.]" in result
+
+    def test_enrich_shodan_contains_status(self, shodan_normalized_data):
+        result = enrich_shodan(shodan_normalized_data)
+        assert "Status:" in result
+
+    def test_enrich_shodan_contains_location(self, shodan_normalized_data):
+        result = enrich_shodan(shodan_normalized_data)
+        if shodan_normalized_data.get("geo_info"):
+            assert "Location:" in result
+
+    def test_enrich_shodan_contains_network_info(self, shodan_normalized_data):
+        result = enrich_shodan(shodan_normalized_data)
+        if shodan_normalized_data.get("network_info"):
+            assert "Organization:" in result or "ASN:" in result
+
+    def test_enrich_shodan_contains_ports(self, shodan_normalized_data):
+        result = enrich_shodan(shodan_normalized_data)
+        # Ports are listed under additional_info -> ports in normalized data
+        assert "Open Ports:" in result
+
+    def test_enrich_shodan_not_empty(self, shodan_normalized_data):
+        result = enrich_shodan(shodan_normalized_data)
         assert len(result) > 0
 
 

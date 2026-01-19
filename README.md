@@ -24,6 +24,7 @@ This project was tested on Python 3.14.2.
 - AbuseIPDB API key (free tier is sufficient)
 - AlienVault OTX API key (free tier is sufficient)
 - URLScan.io API key (free tier is sufficient)
+- Shodan API key (free tier is sufficient)
 - .env file containing API keys
 
 ## How to Get API Keys
@@ -94,6 +95,20 @@ This project was tested on Python 3.14.2.
 
 ![URLScan API Key](readme_media/us_api_key.png)
 
+### Shodan
+
+1. Register for a free Shodan account: [https://account.shodan.io/register](https://account.shodan.io/register).
+
+![Shodan Sign Up Page](readme_media/sd_signup.png)
+
+2. After registering and logging in, navigate to the [Account Page](https://account.shodan.io/) where your API key will be shown.
+
+![Shodan Profile](readme_media/sd_profile.png)
+
+3. Click on the `Show` button and copy your API key.
+
+![Shodan API Key](readme_media/sd_api_key.png)
+
 ### .env File Setup
 
 **`Warning`**: Do not share, upload, commit, or otherwise expose your API keys to the public. This can lead to unauthorized access and usage of your API keys. The `.env` file is used to store your API keys in a secure manner, and has been added to the `.gitignore` file to prevent accidental exposure.
@@ -106,9 +121,10 @@ IPINFO_API_KEY=YOUR IPINFO API KEY
 ABUSEIPDB_API_KEY=YOUR ABUSEIPDB API KEY
 ALIENVAULT_API_KEY=YOUR ALIENVAULT API KEY
 URLSCAN_API_KEY=YOUR URLSCAN API KEY
+SHODAN_API_KEY=YOUR SHODAN API KEY
 ```
 
-2. Replace `YOUR VIRUSTOTAL API KEY`, `YOUR IPINFO API KEY`, `YOUR ABUSEIPDB API KEY`, `YOUR ALIENVAULT API KEY`, `URLSCAN_API_KEY` with the respective API keys you obtained in the previous steps.
+2. Replace `YOUR VIRUSTOTAL API KEY`, `YOUR IPINFO API KEY`, `YOUR ABUSEIPDB API KEY`, `YOUR ALIENVAULT API KEY`, `URLSCAN_API_KEY`, `SHODAN_API_KEY` with the respective API keys you obtained in the previous steps.
 
 3. Ensure that the `.env` file is in the root directory of the project.
 

@@ -1,0 +1,48 @@
+{
+    "schema_version": "1.0",
+    "normalized_time": "2026-01-19T14:04:25.643385+00:00",
+    "source": "Shodan",
+    "ioc_type": "ip",
+    "ioc": "8.8.8.8",
+    "reputation_score": null,
+    "malicious": false,
+    "confidence_score": null,
+    "detection_stats": null,
+    "geo_info": {
+        "country": "United States",
+        "city": "Mountain View",
+        "region": null,
+        "coordinates": "38.00881,-122.11746",
+        "postal": null,
+        "timezone": null
+    },
+    "network_info": {
+        "asn": "AS15169",
+        "organization": "Google LLC",
+        "hostnames": [
+            "dns.google"
+        ],
+        "domains": [
+            "dns.google"
+        ]
+    },
+    "abuse_info": {
+        "vulnerabilities": [],
+        "tag_count": 0
+    },
+    "timestamps": {
+        "last_update": "2026-01-19T07:53:35.817344"
+    },
+    "tags": [],
+    "categories": [],
+    "file_info": null,
+    "domain_info": null,
+    "additional_info": {
+        "ports": [
+            443,
+            53
+        ],
+        "os": null,
+        "data_count": null
+    }
+}

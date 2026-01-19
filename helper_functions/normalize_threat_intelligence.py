@@ -1,6 +1,6 @@
 """Thin wrappers for normalizing threat intelligence data from several Threat Intelligence sources into a common schema.
 
-This module supports normalization for VirusTotal, AbuseIPDB, ipinfo.io, AlienVault OTX, urlscan.io threat intelligence data.
+This module supports normalization for VirusTotal, AbuseIPDB, ipinfo.io, AlienVault OTX, urlscan.io, Shodan threat intelligence data.
 """
 
 from datetime import datetime, timezone
@@ -996,5 +996,80 @@ def normalize_urlscan_data(raw_data: dict) -> ThreatIntelligenceNormalizedSchema
         timestamps=timestamps,
         tags=tags,
         categories=categories,
+        additional_info=additional_info,
+    )
+
+
+def normalize_shodan_ip_data(raw_data: dict) -> ThreatIntelligenceNormalizedSchema:
+    """Normalize Shodan IP data into the common schema.
+
+    Args:
+        raw_data (dict): Raw JSON data from Shodan for an IP.
+
+    Returns:
+        ThreatIntelligenceNormalizedSchema: Normalized threat intelligence data.
+    """
+    # Extract IP address
+    ioc = raw_data.get("ip_str", "")
+
+    # Determine if malicious based on vulnerabilities or tags
+    vulnerabilities = raw_data.get("vulns", {})
+    tags = raw_data.get("tags", [])
+    malicious = len(vulnerabilities) > 0 or "malicious" in tags
+
+    # Build geo info
+    geo_info = {
+        "country": raw_data.get("country_name"),
+        "city": raw_data.get("city"),
+        "region": raw_data.get("region_name"),
+        "coordinates": f"{raw_data.get('latitude')},{raw_data.get('longitude')}",
+        "postal": raw_data.get("postal_code"),
+        "timezone": raw_data.get("timezone"),
+    }
+
+    # Build network info
+    network_info = {
+        "asn": raw_data.get("asn"),
+        "organization": raw_data.get("org"),
+        "hostnames": raw_data.get("hostnames", []),
+        "domains": raw_data.get("domains", []),
+    }
+
+    # Build abuse info
+    abuse_info = {
+        "vulnerabilities": list(vulnerabilities.keys()),
+        "tag_count": len(tags),
+    }
+
+    # Additional info
+    additional_info = {
+        "ports": raw_data.get("ports", []),
+        "os": raw_data.get("os"),
+        "data_count": raw_data.get("data_count"),
+    }
+
+    # Timestamps
+    timestamps = {
+        "last_update": raw_data.get("last_update"),
+    }
+
+    # Logging for debugging
+    logger.debug(
+        "Normalized Shodan IP data for IOC %s: malicious=%s, vulnerabilities=%s",
+        ioc,
+        malicious,
+        list(vulnerabilities.keys()),
+    )
+
+    return ThreatIntelligenceNormalizedSchema(
+        source="Shodan",
+        ioc_type="ip",
+        ioc=ioc,
+        malicious=malicious,
+        geo_info=geo_info,
+        network_info=network_info,
+        abuse_info=abuse_info,
+        timestamps=timestamps,
+        tags=tags,
         additional_info=additional_info,
     )
