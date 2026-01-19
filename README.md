@@ -138,10 +138,12 @@ pip install -r requirements.txt
 
 2. Ensure your `.env` file is set up with the necessary API keys as described in [`.env File Setup`](#env-file-setup) section.
 
-3. Run main.py to execute the example workflow. Edit the file to modify the example IOCs as needed or parts of the workflow you want to test.
+3. Run main.py to execute the example workflow with an IOC:
 
 ```bash
-python main.py
+python main.py {ioc_type} {ioc_value}
+# Example for an IP address IOC
+python main.py ip 8.8.8.8
 ```
 
 ## Unit Tests

@@ -4,6 +4,18 @@ This module supports normalized VirusTotal, AbuseIPDB, ipinfo.io, AlienVault OTX
 """
 
 
+from helper_functions.normalize_threat_intelligence import ThreatIntelligenceNormalizedSchema
+
+
+def _to_dict(data: ThreatIntelligenceNormalizedSchema | dict | None) -> dict:
+    """Helper to coerce a normalized schema or dict to a plain dict."""
+    if data is None:
+        return {}
+    if isinstance(data, ThreatIntelligenceNormalizedSchema):
+        return data.__dict__
+    return data
+
+
 def enrich_abuseipdb(data: dict) -> str:
     """Enrich AbuseIPDB normalized data.
 
@@ -631,15 +643,15 @@ def enrich_shodan(data: dict) -> str:
 
 
 def combined_enrichment(
-    abuseipdb_data: dict | None = None,
-    ipinfo_data: dict | None = None,
-    ip_virustotal_data: dict | None = None,
-    domain_virustotal_data: dict | None = None,
-    file_hash_virustotal_data: dict | None = None,
-    ip_alienvault_data: dict | None = None,
-    domain_alienvault_data: dict | None = None,
-    urlscan_data: dict | None = None,
-    shodan_data: dict | None = None,
+    abuseipdb_data: ThreatIntelligenceNormalizedSchema | None = None,
+    ipinfo_data: ThreatIntelligenceNormalizedSchema | None = None,
+    ip_virustotal_data: ThreatIntelligenceNormalizedSchema | None = None,
+    domain_virustotal_data: ThreatIntelligenceNormalizedSchema | None = None,
+    file_hash_virustotal_data: ThreatIntelligenceNormalizedSchema | None = None,
+    ip_alienvault_data: ThreatIntelligenceNormalizedSchema | None = None,
+    domain_alienvault_data: ThreatIntelligenceNormalizedSchema | None = None,
+    urlscan_data: ThreatIntelligenceNormalizedSchema | None = None,
+    shodan_data: ThreatIntelligenceNormalizedSchema | None = None,
 ) -> str:
     """Combine comments from multiple threat intelligence sources.
 
@@ -663,55 +675,55 @@ def combined_enrichment(
         comments.append("=" * 60)
         comments.append("ABUSEIPDB ANALYSIS")
         comments.append("=" * 60)
-        comments.append(enrich_abuseipdb(abuseipdb_data))
+        comments.append(enrich_abuseipdb(_to_dict(abuseipdb_data)))
 
     if ipinfo_data:
         comments.append("=" * 60)
         comments.append("IPINFO.IO ANALYSIS")
         comments.append("=" * 60)
-        comments.append(enrich_ipinfo(ipinfo_data))
+        comments.append(enrich_ipinfo(_to_dict(ipinfo_data)))
 
     if ip_virustotal_data:
         comments.append("=" * 60)
         comments.append("VIRUSTOTAL IP ANALYSIS")
         comments.append("=" * 60)
-        comments.append(enrich_ip_virustotal(ip_virustotal_data))
+        comments.append(enrich_ip_virustotal(_to_dict(ip_virustotal_data)))
 
     if domain_virustotal_data:
         comments.append("=" * 60)
         comments.append("VIRUSTOTAL DOMAIN ANALYSIS")
         comments.append("=" * 60)
-        comments.append(enrich_domain_virustotal(domain_virustotal_data))
+        comments.append(enrich_domain_virustotal(_to_dict(domain_virustotal_data)))
 
     if file_hash_virustotal_data:
         comments.append("=" * 60)
         comments.append("VIRUSTOTAL FILE HASH ANALYSIS")
         comments.append("=" * 60)
-        comments.append(enrich_file_hash_virustotal(file_hash_virustotal_data))
+        comments.append(enrich_file_hash_virustotal(_to_dict(file_hash_virustotal_data)))
 
     if ip_alienvault_data:
         comments.append("=" * 60)
         comments.append("ALIENVAULT OTX IP ANALYSIS")
         comments.append("=" * 60)
-        comments.append(enrich_ip_alienvault(ip_alienvault_data))
+        comments.append(enrich_ip_alienvault(_to_dict(ip_alienvault_data)))
 
     if domain_alienvault_data:
         comments.append("=" * 60)
         comments.append("ALIENVAULT OTX DOMAIN ANALYSIS")
         comments.append("=" * 60)
-        comments.append(enrich_domain_alienvault(domain_alienvault_data))
+        comments.append(enrich_domain_alienvault(_to_dict(domain_alienvault_data)))
 
     if urlscan_data:
         comments.append("=" * 60)
         comments.append("URLSCAN.IO ANALYSIS")
         comments.append("=" * 60)
-        comments.append(enrich_urlscan(urlscan_data))
+        comments.append(enrich_urlscan(_to_dict(urlscan_data)))
 
     if shodan_data:
         comments.append("=" * 60)
         comments.append("SHODAN ANALYSIS")
         comments.append("=" * 60)
-        comments.append(enrich_shodan(shodan_data))
+        comments.append(enrich_shodan(_to_dict(shodan_data)))
 
     if not comments:
         return "No threat intelligence data provided."
