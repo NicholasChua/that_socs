@@ -153,3 +153,9 @@ Unit tests are provided in the `tests/` directory. To run the tests, use the fol
 ```bash
 pytest tests/ -v
 ```
+
+## To Do
+
+- opentip.kasperky API integration
+- filescan.io API integration
+- API rate limit definitions and handling
